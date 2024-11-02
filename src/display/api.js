@@ -2646,32 +2646,27 @@ class WorkerTransport {
       };
     });
 
-    messageHandler.on("ReaderHeadersReady", data => {
-      const headersCapability = Promise.withResolvers();
-      const fullReader = this._fullReader;
-      fullReader.headersReady.then(() => {
-        // If stream or range are disabled, it's our only way to report
-        // loading progress.
-        if (!fullReader.isStreamingSupported || !fullReader.isRangeSupported) {
-          if (this._lastProgress) {
-            loadingTask.onProgress?.(this._lastProgress);
-          }
-          fullReader.onProgress = evt => {
-            loadingTask.onProgress?.({
-              loaded: evt.loaded,
-              total: evt.total,
-            });
-          };
+    messageHandler.on("ReaderHeadersReady", async data => {
+      await this._fullReader.headersReady;
+
+      const { isStreamingSupported, isRangeSupported, contentLength } =
+        this._fullReader;
+
+      // If stream or range are disabled, it's our only way to report
+      // loading progress.
+      if (!isStreamingSupported || !isRangeSupported) {
+        if (this._lastProgress) {
+          loadingTask.onProgress?.(this._lastProgress);
         }
+        this._fullReader.onProgress = evt => {
+          loadingTask.onProgress?.({
+            loaded: evt.loaded,
+            total: evt.total,
+          });
+        };
+      }
 
-        headersCapability.resolve({
-          isStreamingSupported: fullReader.isStreamingSupported,
-          isRangeSupported: fullReader.isRangeSupported,
-          contentLength: fullReader.contentLength,
-        });
-      }, headersCapability.reject);
-
-      return headersCapability.promise;
+      return { isStreamingSupported, isRangeSupported, contentLength };
     });
 
     messageHandler.on("GetRangeReader", (data, sink) => {
@@ -2921,29 +2916,31 @@ class WorkerTransport {
       });
     });
 
-    messageHandler.on("FetchBuiltInCMap", data => {
+    messageHandler.on("FetchBuiltInCMap", async data => {
+      if (typeof PDFJSDev !== "undefined" && PDFJSDev.test("MOZCENTRAL")) {
+        throw new Error("Not implemented: FetchBuiltInCMap");
+      }
       if (this.destroyed) {
-        return Promise.reject(new Error("Worker was destroyed."));
+        throw new Error("Worker was destroyed.");
       }
       if (!this.cMapReaderFactory) {
-        return Promise.reject(
-          new Error(
-            "CMapReaderFactory not initialized, see the `useWorkerFetch` parameter."
-          )
+        throw new Error(
+          "CMapReaderFactory not initialized, see the `useWorkerFetch` parameter."
         );
       }
       return this.cMapReaderFactory.fetch(data);
     });
 
-    messageHandler.on("FetchStandardFontData", data => {
+    messageHandler.on("FetchStandardFontData", async data => {
+      if (typeof PDFJSDev !== "undefined" && PDFJSDev.test("MOZCENTRAL")) {
+        throw new Error("Not implemented: FetchStandardFontData");
+      }
       if (this.destroyed) {
-        return Promise.reject(new Error("Worker was destroyed."));
+        throw new Error("Worker was destroyed.");
       }
       if (!this.standardFontDataFactory) {
-        return Promise.reject(
-          new Error(
-            "StandardFontDataFactory not initialized, see the `useWorkerFetch` parameter."
-          )
+        throw new Error(
+          "StandardFontDataFactory not initialized, see the `useWorkerFetch` parameter."
         );
       }
       return this.standardFontDataFactory.fetch(data);
