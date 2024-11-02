@@ -43,6 +43,8 @@ import {
  * @property {HTMLButtonElement} download - Button to download the document.
  */
 
+// TODO: add new button logic
+
 class Toolbar {
   #opts;
 

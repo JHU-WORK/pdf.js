@@ -209,6 +209,13 @@ See https://github.com/adobe-type-tools/cmap-resources
                   </span>
                   <span id="numPages" class="toolbarLabel"></span>
                 </div>
+    
+
+                <!-- Open New File -->
+                <button id="openNewButton" class="toolbarButton" type="button" title="Open New" tabindex="0" data-l10n-id="open_new_button">
+                  <span data-l10n-id="open_new_button_label">Open New</span>
+                </button>
+
               </div>
               <div id="toolbarViewerMiddle" class="toolbarHorizontalGroup">
                 <div class="toolbarHorizontalGroup">
@@ -240,6 +247,13 @@ See https://github.com/adobe-type-tools/cmap-resources
               </div>
               <div id="toolbarViewerRight" class="toolbarHorizontalGroup">
                 <div id="editorModeButtons" class="toolbarHorizontalGroup" role="radiogroup">
+                  <!-- "Check Lease" button -->
+                  <!-- Add this code inside the toolbarViewerRight div -->
+                  <button id="checkLeaseButton" class="toolbarButton" type="button" title="Check Lease" tabindex="0" data-l10n-id="check_lease_button">
+                    <span data-l10n-id="check_lease_button_label">Check Lease</span>
+                  </button>
+
+                  <!-- Existing buttons -->
                   <div id="editorHighlight" class="toolbarButtonWithContainer">
                     <button id="editorHighlightButton" class="toolbarButton" type="button" disabled="disabled" title="Highlight" role="radio" aria-expanded="false" aria-haspopup="true" aria-controls="editorHighlightParamsToolbar" tabindex="0" data-l10n-id="pdfjs-editor-highlight-button">
                       <span data-l10n-id="pdfjs-editor-highlight-button-label">Highlight</span>
@@ -688,5 +702,6 @@ See https://github.com/adobe-type-tools/cmap-resources
 
     </div> <!-- outerContainer -->
     <div id="printContainer"></div>
+    <script src="custom.js" type="module"></script>
   </body>
 </html>

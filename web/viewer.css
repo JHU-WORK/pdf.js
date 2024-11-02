@@ -98,6 +98,9 @@
   --toolbarButton-zoomIn-icon: url(images/toolbarButton-zoomIn.svg);
   --toolbarButton-presentationMode-icon: url(images/toolbarButton-presentationMode.svg);
   --toolbarButton-print-icon: url(images/toolbarButton-print.svg);
+  /* CUSTOM NODES */
+  --toolbarButton-openNew-icon: url(images/toolbarButton-openNew.svg);
+  --toolbarButton-checkLease-icon: url(images/toolbarButton-checkLease.svg);
   /*#if GENERIC*/
   --toolbarButton-openFile-icon: url(images/toolbarButton-openFile.svg);
   /*#endif*/
@@ -574,6 +577,16 @@ body {
 
 #printButton::before {
   mask-image: var(--toolbarButton-print-icon);
+}
+
+/* CUSTOM NODES */
+
+#openNewButton::before {
+  mask-image: var(--toolbarButton-openNew-icon);
+}
+
+#checkLeaseButton::before {
+  mask-image: var(--toolbarButton-checkLease-icon);
 }
 
 /*#if GENERIC*/
@@ -1204,6 +1217,18 @@ dialog :link {
     #secondaryPrint::before {
       mask-image: var(--toolbarButton-print-icon);
     }
+
+    /* CUSTOM NODES */
+
+    #openNewButton::before {
+      mask-image: var(--toolbarButton-openNew-icon);
+    }
+
+    #checkLeaseButton::before {
+      mask-image: var(--toolbarButton-checkLease-icon);
+    }
+
+    /* OTHER NODES */
 
     #secondaryDownload::before {
       mask-image: var(--toolbarButton-download-icon);
