@@ -82,7 +82,7 @@ PDFViewerApplication.initializedPromise.then(function () {
             })
             .then(res => {
               // Call the function to highlight the PDF with the received data
-              // highlightPDF(res);
+              highlightPDF(res);
               console.log("Success:", res);
             })
             .catch(error => {
@@ -96,58 +96,97 @@ PDFViewerApplication.initializedPromise.then(function () {
   }
 });
 
-// // Define function to highlight PDF
-// function highlightPDF(data) {
-//   // Access the PDF viewer and get the pages
-//   const pdfViewer = PDFViewerApplication.pdfViewer;
-//   const numPages = pdfViewer.pagesCount;
+function highlightPDF(data) {
+  // Access the PDF viewer and get the pages
+  const pdfViewer = PDFViewerApplication.pdfViewer;
+  const numPages = pdfViewer.pagesCount;
+  console.log("Number of pages:", numPages);
 
-//   // Go through each page and apply highlights based on data
-//   for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-//     const pageKey = "page" + pageNum;
-//     if (data[pageKey]) {
-//       const annotations = data[pageKey];
-//       annotations.forEach(annotation => {
-//         const text = annotation.text;
-//         const line = annotation.line;
-//         const color = annotation.color;
-//         const comment = annotation.comment;
+  // Go through each page and apply highlights based on data
+  for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+    const pageKey = "page" + pageNum;
+    console.log("Processing", pageKey);
+    if (data[pageKey]) {
+      const annotations = data[pageKey];
+      console.log("Annotations for page", pageNum, annotations);
+      const pageView = pdfViewer.getPageView(pageNum - 1);
 
-//         // Implement the logic to find the text in the page and highlight it
-//         // This involves working with the PDF.js TextLayer
+      if (pageView.textLayer && pageView.textLayer.textDivs) {
+        // Text layer is already rendered
+        console.log("Text layer already rendered for page", pageNum);
+        annotations.forEach(annotation => {
+          applyHighlight(pageView, annotation);
+        });
+      } else {
+        // Wait for text layer to render
+        console.log("Waiting for text layer to render for page", pageNum);
+        const eventBus = PDFViewerApplication.eventBus;
+        const textLayerRendered = function (event) {
+          if (event.pageNumber === pageNum) {
+            console.log("Text layer rendered for page", pageNum);
+            annotations.forEach(annotation => {
+              applyHighlight(pageView, annotation);
+            });
+            // Remove the event listener after processing
+            eventBus.off("textlayerrendered", textLayerRendered);
+          }
+        };
+        eventBus.on("textlayerrendered", textLayerRendered);
+      }
+    } else {
+      console.log("No annotations for page", pageNum);
+    }
+  }
+}
 
-//         // Get the page view
-//         const pageView = pdfViewer.getPageView(pageNum - 1);
+function applyHighlight(pageView, annotation) {
+  const { text, color, comment, line } = annotation;
+  console.log("Applying highlight:", annotation);
+  const textDivs = pageView.textLayer.textDivs;
+  if (!textDivs) {
+    console.warn("No textDivs for page", pageView.id);
+    return;
+  }
 
-//         if (pageView.textLayer && pageView.textLayer.textDivs) {
-//           // Text layer is already rendered
-//           applyHighlight(pageView, text, color, comment);
-//         } else {
-//           // Wait for text layer to render
-//           pageView.eventBus.on('textlayerrendered', function () {
-//             applyHighlight(pageView, text, color, comment);
-//           });
-//         }
-//       });
-//     }
-//   }
-// }
+  // Normalize the search text
+  const searchText = text.replace(/\s+/g, " ").trim().toLowerCase();
+  console.log("Normalized search text:", searchText);
 
-// // Function to apply highlight to a pageView
-// function applyHighlight(pageView, text, color, comment) {
-//   const textDivs = pageView.textLayer.textDivs;
-//   if (!textDivs) {
-//     return;
-//   }
+  let found = false;
+  for (let i = 0; i < textDivs.length; i++) {
+    let accumulatedText = "";
+    const textDivIndices = [];
+    for (let j = i; j < textDivs.length; j++) {
+      const divText = textDivs[j].textContent.replace(/\s+/g, " ").trim();
+      if (divText.length === 0) {
+        continue; // skip empty textDivs
+      }
+      accumulatedText += (accumulatedText ? " " : "") + divText;
+      textDivIndices.push(j);
 
-//   textDivs.forEach((textDiv) => {
-//     if (textDiv.textContent.includes(text)) {
-//       // Apply highlight
-//       textDiv.style.backgroundColor = color;
-//       // Optionally, add tooltip or comment
-//       if (comment) {
-//         textDiv.title = comment;
-//       }
-//     }
-//   });
-// }
+      const accumulatedTextNormalized = accumulatedText.toLowerCase();
+      // Log accumulated text
+      console.log("Accumulated text:", accumulatedTextNormalized);
+
+      if (accumulatedTextNormalized === searchText) {
+        // Found exact match
+        console.log("Found match at textDiv indices:", textDivIndices);
+        for (const idx of textDivIndices) {
+          textDivs[idx].style.backgroundColor = color;
+          if (comment) {
+            textDivs[idx].title = comment;
+          }
+        }
+        found = true;
+        return; // Found match, exit function
+      } else if (accumulatedTextNormalized.length > searchText.length) {
+        break; // Overshot, move to next starting textDiv
+      }
+    }
+  }
+  if (!found) {
+    console.warn("Could not find text on page", pageView.id);
+  }
+}
+
+// TODO: add logic for comments or tooltips to the highlighted text
