@@ -83,8 +83,14 @@ PDFViewerApplication.initializedPromise.then(function () {
             })
             .then(async res => {
               // Call the function to highlight the PDF with the received data
-              await highlightPDF(res);
+              // await highlightPDF(res);
               console.log("Success:", res);
+
+              // Render all pages before highlighting
+              await renderAllPages();
+
+              // Highlight the first word on the first page
+              await highlightTopPage();
             })
             .catch(error => {
               console.error("Error:", error);
@@ -97,12 +103,60 @@ PDFViewerApplication.initializedPromise.then(function () {
   }
 });
 
+// Function to render all pages
+async function renderAllPages() {
+  const pdfViewer = PDFViewerApplication.pdfViewer;
+  const numPages = pdfViewer.pagesCount;
+
+  for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+    const pageView = pdfViewer.getPageView(pageNum - 1);
+
+    // Check if the page is already rendered
+    if (!pageView.renderingState || pageView.renderingState !== 3) {
+      await pageView.draw();
+    }
+  }
+}
+
+// Function to highlight the first word of the first page
+async function highlightTopPage() {
+  const pdfViewer = PDFViewerApplication.pdfViewer;
+  const pageView = pdfViewer.getPageView(0); // First page (index 0)
+
+  // Ensure the page is rendered
+  if (!pageView.renderingState || pageView.renderingState !== 3) {
+    await pageView.draw();
+  }
+
+  const pdfPage = pageView.pdfPage;
+  const textContent = await pdfPage.getTextContent();
+
+  const items = textContent.items;
+
+  if (items.length > 0) {
+    const firstItem = items[0];
+    const firstWord = firstItem.str.split(/\s+/)[0]; // Get the first word
+
+    // Create a mock annotation for the first word
+    const annotation = {
+      text: firstWord,
+      color: "yellow",
+      comment: "First word of the document",
+    };
+
+    applyHighlight(pageView, annotation, textContent);
+  } else {
+    console.warn("No text items found on the first page.");
+  }
+}
+
 async function highlightPDF(data) {
   // Access the PDF viewer and get the pages
   const pdfViewer = PDFViewerApplication.pdfViewer;
   const numPages = pdfViewer.pagesCount;
   console.log("Number of pages:", numPages);
 
+  const pdfDocument = PDFViewerApplication.pdfDocument;
   const eventBus = PDFViewerApplication.eventBus;
 
   for (let pageNum = 1; pageNum <= numPages; pageNum++) {
@@ -115,11 +169,29 @@ async function highlightPDF(data) {
       const pageView = pdfViewer.getPageView(pageNum - 1);
 
       try {
-        // Force the page to render
-        await pageView.draw();
+        const pdfPage = await pdfDocument.getPage(pageNum);
+        const textContent = await pdfPage.getTextContent();
 
-        // The text layer should now be available
-        const textContent = await pageView.pdfPage.getTextContent();
+        // Ensure the text layer is rendered
+        if (!pageView.textLayer || !pageView.textLayer.textDivs) {
+          // Wait for text layer to render
+          console.log(
+            "Waiting for text layer to render for page",
+            pageNum,
+            textContent
+          );
+
+          await new Promise(resolve => {
+            const textLayerRendered = function (event) {
+              if (event.pageNumber === pageNum) {
+                console.log("Text layer rendered for page", pageNum);
+                resolve();
+                eventBus.off("textlayerrendered", textLayerRendered);
+              }
+            };
+            eventBus.on("textlayerrendered", textLayerRendered);
+          });
+        }
 
         annotations.forEach(annotation => {
           applyHighlight(pageView, annotation, textContent);
@@ -136,6 +208,19 @@ async function highlightPDF(data) {
 function applyHighlight(pageView, annotation, textContent) {
   const { text, color, comment, line } = annotation;
   console.log("Applying highlight:", annotation);
+
+  // Log the textLayer object
+  console.log("pageView.textLayer:", pageView.textLayer);
+  if (!pageView.textLayer) {
+    console.warn("No textLayer for page", pageView.id);
+    return;
+  }
+
+  const textDivs = pageView.textLayer.textDivs;
+  if (!textDivs) {
+    console.warn("No textDivs for page", pageView.id);
+    return;
+  }
 
   const items = textContent.items;
 
@@ -169,17 +254,23 @@ function applyHighlight(pageView, annotation, textContent) {
     matchedItemIndices.add(itemIndex);
   }
 
-  // Now, get the bounding boxes of the text items at these indices
+  // Now, get the bounding boxes of the textDivs at these indices
   const boxes = [];
   matchedItemIndices.forEach(function(i) {
-    const item = items[i];
-    if (item) {
-      const transform = item.transform;
-      const fontHeight = Math.hypot(transform[2], transform[3]);
-      const x = transform[4];
-      const y = transform[5] - fontHeight;
-      const width = item.width * transform[0]; // Adjusted for scaling
-      const height = fontHeight;
+    const textDiv = textDivs[i];
+    if (textDiv) {
+      const rect = textDiv.getBoundingClientRect();
+
+      const viewport = pageView.viewport;
+
+      // Convert the coordinates to PDF coordinates
+      const [x1, y1] = viewport.convertToPdfPoint(rect.left, rect.top);
+      const [x2, y2] = viewport.convertToPdfPoint(rect.right, rect.bottom);
+
+      const x = Math.min(x1, x2);
+      const y = Math.min(y1, y2);
+      const width = Math.abs(x1 - x2);
+      const height = Math.abs(y1 - y2);
 
       boxes.push({ x, y, width, height });
     }
@@ -199,15 +290,13 @@ function applyHighlight(pageView, annotation, textContent) {
     methodOfCreation: "custom_script",
   };
 
-  // Get the uiManager from PDF.js
-  const uiManager = PDFViewerApplication.pdfViewer.annotationEditorUIManager;
-  // Set parent to pageView
-  const parent = pageView;
+  const highlightEditor = new HighlightEditor(editorParams);
+  highlightEditor.pageIndex = pageView.id - 1;
 
-  const highlightEditor = new HighlightEditor(editorParams, parent, uiManager);
+  highlightEditor.parent = pageView.annotationEditorLayer;
 
   // Add the editor to the annotationEditorLayer
-  parent.annotationEditorLayer.add(highlightEditor);
+  pageView.annotationEditorLayer.add(highlightEditor);
 
   // If comment is provided, add a tooltip or popup
   if (comment) {
