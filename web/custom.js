@@ -1,4 +1,5 @@
 /* custom.js */
+import { HighlightEditor } from "../src/display/editor/highlight.js";
 import { PDFViewerApplication } from "./viewer.js";
 
 PDFViewerApplication.initializedPromise.then(function () {
@@ -80,9 +81,9 @@ PDFViewerApplication.initializedPromise.then(function () {
               }
               return response.json();
             })
-            .then(res => {
+            .then(async res => {
               // Call the function to highlight the PDF with the received data
-              highlightPDF(res);
+              await highlightPDF(res);
               console.log("Success:", res);
             })
             .catch(error => {
@@ -96,42 +97,35 @@ PDFViewerApplication.initializedPromise.then(function () {
   }
 });
 
-function highlightPDF(data) {
+async function highlightPDF(data) {
   // Access the PDF viewer and get the pages
   const pdfViewer = PDFViewerApplication.pdfViewer;
   const numPages = pdfViewer.pagesCount;
   console.log("Number of pages:", numPages);
 
-  // Go through each page and apply highlights based on data
+  const eventBus = PDFViewerApplication.eventBus;
+
   for (let pageNum = 1; pageNum <= numPages; pageNum++) {
     const pageKey = "page" + pageNum;
     console.log("Processing", pageKey);
     if (data[pageKey]) {
       const annotations = data[pageKey];
       console.log("Annotations for page", pageNum, annotations);
+
       const pageView = pdfViewer.getPageView(pageNum - 1);
 
-      if (pageView.textLayer && pageView.textLayer.textDivs) {
-        // Text layer is already rendered
-        console.log("Text layer already rendered for page", pageNum);
+      try {
+        // Force the page to render
+        await pageView.draw();
+
+        // The text layer should now be available
+        const textContent = await pageView.pdfPage.getTextContent();
+
         annotations.forEach(annotation => {
-          applyHighlight(pageView, annotation);
+          applyHighlight(pageView, annotation, textContent);
         });
-      } else {
-        // Wait for text layer to render
-        console.log("Waiting for text layer to render for page", pageNum);
-        const eventBus = PDFViewerApplication.eventBus;
-        const textLayerRendered = function (event) {
-          if (event.pageNumber === pageNum) {
-            console.log("Text layer rendered for page", pageNum);
-            annotations.forEach(annotation => {
-              applyHighlight(pageView, annotation);
-            });
-            // Remove the event listener after processing
-            eventBus.off("textlayerrendered", textLayerRendered);
-          }
-        };
-        eventBus.on("textlayerrendered", textLayerRendered);
+      } catch (error) {
+        console.error("Error processing page", pageNum, error);
       }
     } else {
       console.log("No annotations for page", pageNum);
@@ -139,54 +133,85 @@ function highlightPDF(data) {
   }
 }
 
-function applyHighlight(pageView, annotation) {
+function applyHighlight(pageView, annotation, textContent) {
   const { text, color, comment, line } = annotation;
   console.log("Applying highlight:", annotation);
-  const textDivs = pageView.textLayer.textDivs;
-  if (!textDivs) {
-    console.warn("No textDivs for page", pageView.id);
+
+  const items = textContent.items;
+
+  // Build the concatenated text and map indices
+  let pageText = "";
+  const indexMap = []; // Map from pageText index to item index
+
+  for (let i = 0; i < items.length; i++) {
+    const itemText = items[i].str.replace(/\s+/g, ""); // Remove spaces in items
+    for (let j = 0; j < itemText.length; j++) {
+      pageText += itemText[j];
+      indexMap.push(i);
+    }
+  }
+
+  const searchText = text.replace(/\s+/g, "").toLowerCase();
+  const pageTextNormalized = pageText.toLowerCase();
+
+  const startIndex = pageTextNormalized.indexOf(searchText);
+
+  if (startIndex === -1) {
+    console.warn("Could not find text on page", pageView.id);
     return;
   }
 
-  // Normalize the search text
-  const searchText = text.replace(/\s+/g, " ").trim().toLowerCase();
-  console.log("Normalized search text:", searchText);
+  // Get the item indices that correspond to the matched text
+  const matchedItemIndices = new Set();
 
-  let found = false;
-  for (let i = 0; i < textDivs.length; i++) {
-    let accumulatedText = "";
-    const textDivIndices = [];
-    for (let j = i; j < textDivs.length; j++) {
-      const divText = textDivs[j].textContent.replace(/\s+/g, " ").trim();
-      if (divText.length === 0) {
-        continue; // skip empty textDivs
-      }
-      accumulatedText += (accumulatedText ? " " : "") + divText;
-      textDivIndices.push(j);
-
-      const accumulatedTextNormalized = accumulatedText.toLowerCase();
-      // Log accumulated text
-      console.log("Accumulated text:", accumulatedTextNormalized);
-
-      if (accumulatedTextNormalized === searchText) {
-        // Found exact match
-        console.log("Found match at textDiv indices:", textDivIndices);
-        for (const idx of textDivIndices) {
-          textDivs[idx].style.backgroundColor = color;
-          if (comment) {
-            textDivs[idx].title = comment;
-          }
-        }
-        found = true;
-        return; // Found match, exit function
-      } else if (accumulatedTextNormalized.length > searchText.length) {
-        break; // Overshot, move to next starting textDiv
-      }
-    }
+  for (let idx = startIndex; idx < startIndex + searchText.length; idx++) {
+    const itemIndex = indexMap[idx];
+    matchedItemIndices.add(itemIndex);
   }
-  if (!found) {
-    console.warn("Could not find text on page", pageView.id);
+
+  // Now, get the bounding boxes of the text items at these indices
+  const boxes = [];
+  matchedItemIndices.forEach(function(i) {
+    const item = items[i];
+    if (item) {
+      const transform = item.transform;
+      const fontHeight = Math.hypot(transform[2], transform[3]);
+      const x = transform[4];
+      const y = transform[5] - fontHeight;
+      const width = item.width * transform[0]; // Adjusted for scaling
+      const height = fontHeight;
+
+      boxes.push({ x, y, width, height });
+    }
+  });
+
+  if (boxes.length === 0) {
+    console.warn("No boxes found for annotation on page", pageView.id);
+    return;
+  }
+
+  // Now, create a HighlightEditor
+  const editorParams = {
+    color,
+    opacity: 0.4, // Adjust opacity as needed
+    boxes,
+    text: text,
+    methodOfCreation: "custom_script",
+  };
+
+  // Get the uiManager from PDF.js
+  const uiManager = PDFViewerApplication.pdfViewer.annotationEditorUIManager;
+  // Set parent to pageView
+  const parent = pageView;
+
+  const highlightEditor = new HighlightEditor(editorParams, parent, uiManager);
+
+  // Add the editor to the annotationEditorLayer
+  parent.annotationEditorLayer.add(highlightEditor);
+
+  // If comment is provided, add a tooltip or popup
+  if (comment) {
+    // Set the title attribute on the highlight div for tooltip
+    highlightEditor.div.title = comment;
   }
 }
-
-// TODO: add logic for comments or tooltips to the highlighted text
