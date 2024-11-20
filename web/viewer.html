@@ -212,7 +212,7 @@ See https://github.com/adobe-type-tools/cmap-resources
     
 
                 <!-- Open New File -->
-                <button id="openNewButton" class="toolbarButton" type="button" title="Open New" tabindex="0" data-l10n-id="open_new_button">
+                <button id="openNewButton" class="toolbarButton" type="button" title="Open New" tabindex="0" data-l10n-id="open_new_button" onclick="openPDF()">
                   <span data-l10n-id="open_new_button_label">Open New</span>
                 </button>
 
@@ -249,7 +249,8 @@ See https://github.com/adobe-type-tools/cmap-resources
                 <div id="editorModeButtons" class="toolbarHorizontalGroup" role="radiogroup">
                   <!-- "Check Lease" button -->
                   <!-- Add this code inside the toolbarViewerRight div -->
-                  <button id="checkLeaseButton" class="toolbarButton" type="button" title="Check Lease" tabindex="0" data-l10n-id="check_lease_button">
+                  <!-- <button id="checkLeaseButton" class="toolbarButton" type="button" title="Check Lease" tabindex="0" data-l10n-id="check_lease_button" onclick="highlightLease()"> -->
+                  <button id="checkLeaseButton" class="toolbarButton" type="button" title="Check Lease" tabindex="0" data-l10n-id="check_lease_button" onclick="highlightLease()">
                     <span data-l10n-id="check_lease_button_label">Check Lease</span>
                   </button>
 
