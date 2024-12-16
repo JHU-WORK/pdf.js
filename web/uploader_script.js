@@ -152,6 +152,6 @@ submitbutton.addEventListener("click", () => {
       };
       reader.readAsDataURL(file); // Convert to base64
     } else {
-      alert("Please upload a PDF file before submitting.");
+        alert("Please upload a PDF file before submitting.");
     }
   });

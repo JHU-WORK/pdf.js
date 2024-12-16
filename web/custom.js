@@ -1,6 +1,18 @@
 /* custom.js */
 import { PDFViewerApplication } from "./viewer.js";
 // const pdfData = sessionStorage.getItem("uploadedPDF");
+
+const pdfData = sessionStorage.getItem("uploadedPDF");
+
+if (pdfData) {
+  console.log("Opening PDF file from sessionStorage");
+  const fileURL = pdfData; // Use the base64 data as the file URL
+  PDFViewerApplication.open({ url: fileURL }); // Provide it as the `url` parameter
+} else {
+  console.log("No PDF file in sessionStorage");
+  alert("No PDF file found. Please upload a file and try again.");
+}
+
 window.openPDF = function () {
   // Create a hidden file input element
   const fileInput = document.createElement("input");
