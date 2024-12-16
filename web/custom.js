@@ -1,6 +1,6 @@
 /* custom.js */
 import { PDFViewerApplication } from "./viewer.js";
-
+// const pdfData = sessionStorage.getItem("uploadedPDF");
 window.openPDF = function () {
   // Create a hidden file input element
   const fileInput = document.createElement("input");
@@ -94,3 +94,24 @@ window.highlightLease = function () {
       console.error("Error getting PDF data:", error);
     });
 };
+
+// window.onload = () => {
+//   const fileInput = document.createElement("input");
+//   fileInput.type = "file";
+//   fileInput.accept = "application/pdf";
+//   fileInput.style.display = "none";
+//   const pdfData = sessionStorage.getItem("uploadedPDF");
+//   const fileURL = URL.createObjectURL(pdfData);
+//   PDFViewerApplication.close().then(function () {
+//     PDFViewerApplication.open({
+//       url: fileURL,
+//       originalUrl: file.name,
+//     });
+//   });
+//   // Trigger the file dialog
+//   document.body.append(fileInput);
+//   fileInput.click();
+
+//   // Clean up the file input element
+//   fileInput.remove();
+// }
