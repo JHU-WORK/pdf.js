@@ -14,7 +14,7 @@ body {
   padding: 15px;
   justify-content: center;
   min-height: 100vh;
-  background: #5145BA;
+  background: #ADD8E6;
 }
 
 .file-uploader {
@@ -193,4 +193,22 @@ body {
   color: white;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
   cursor: url('place-holder'), pointer;
+}
+
+.title {
+  background-color: white; /* Set background color to white */
+  padding: 20px;           /* Add some padding for spacing */
+  border: 1px solid #ccc;  /* Optional: Add a border for better visibility */
+  width: 100%;              /* Set the width of the div */
+  margin: 50px auto;       /* Center the div horizontally and add space at the top */
+  text-align: center;      /* Center the text inside the div */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Optional: Add a shadow for better visual effect */
+  border-radius: 20px;
+}
+
+.container {
+  display: flex;            
+  flex-direction: column;   /* 设置为垂直方向 */
+  align-items: center;      /* 居中对齐（可选） */
+  gap: 25px;                /* 两个 div 之间的间距 */
 }

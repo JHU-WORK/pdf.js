@@ -10,20 +10,26 @@
     <script src="./uploader_script.js" defer></script>
   </head>
   <body>
+    <div class="container">
+      <div class="title">
+        <h1 style="color: black;">Hi there! <br> We can help you check your lease <br> & answer questions about it. </h1>
+      </div>
     <div class="file-uploader">
-      <div class="uploader-header">
-        <h2 class="uploader-title">File Uploader</h2>
-        <h4 class="file-completed-status"></h4>
+        <div class="uploader-header">
+          <h2 class="uploader-title">Start by uploading your lease here</h2>
+          <h4 class="file-completed-status"></h4>
+        </div>
+        <ul class="file-list"></ul>
+        <div class="file-upload-box">
+          <h2 class="box-title">
+            <span class="file-instruction">Drag lease (pdf) here or</span>
+            <span class="file-browse-button">browse</span>
+          </h2>
+          <input type="file" class="file-browse-input" accept="application/pdf" hidden>
+        </div>
+        <button class="submitButton">Submit</button>
       </div>
-      <ul class="file-list"></ul>
-      <div class="file-upload-box">
-        <h2 class="box-title">
-          <span class="file-instruction">Drag lease (pdf) here or</span>
-          <span class="file-browse-button">browse</span>
-        </h2>
-        <input type="file" class="file-browse-input" accept="application/pdf" hidden>
-      </div>
-      <button class="submitButton">Submit</button>
     </div>
+
   </body>
 </html>
