@@ -197,7 +197,7 @@ body {
 
 .title {
   background-color: white; /* Set background color to white */
-  padding: 20px;           /* Add some padding for spacing */
+  padding: 15px;           /* Add some padding for spacing */
   border: 1px solid #ccc;  /* Optional: Add a border for better visibility */
   width: 100%;              /* Set the width of the div */
   margin: 50px auto;       /* Center the div horizontally and add space at the top */
