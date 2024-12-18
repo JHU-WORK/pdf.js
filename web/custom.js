@@ -97,13 +97,10 @@ window.openPDF = async function () {
     originalUrl: file.name,
   });
 
-  // Read the file content as base64 if you need
-  // to send the contents to the server
+  // Read the file content as base64
   const fileBase64 = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
-      // reader.result is an ArrayBuffer for binary files
-      // Convert to base64
       const base64String = btoa(
         new Uint8Array(reader.result).reduce(
           (data, byte) => data + String.fromCharCode(byte),
@@ -116,25 +113,26 @@ window.openPDF = async function () {
     reader.readAsArrayBuffer(file);
   });
 
-  // Now send the base64 encoded PDF to the server
+  // Store the uploaded PDF in session storage so that subsequent
+  // page loads and requests use the newly uploaded PDF
+  const base64Data = "data:application/pdf;base64," + fileBase64;
+  sessionStorage.setItem("uploadedPDF", base64Data);
+
+  // Send the PDF data to the server
   const response = await fetch("http://127.0.0.1:8000/api/summerize", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      pdf_data: "data:application/pdf;base64," + fileBase64,
-    }),
+    body: JSON.stringify({ pdf_data: base64Data }),
   });
 
   if (!response.ok) {
-    console.error(
-      "Error summmarizing PDF:",
-      response.status,
-      response.statusText
-    );
+    console.error("Error summarizing PDF:", response.status, response.statusText);
   } else {
     console.log("PDF summarized successfully");
   }
 };
+
+// TODO: check if the file is uploaded properly
 
 window.highlightLease = function () {
   console.log("Check Lease button clicked");
