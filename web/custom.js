@@ -13,38 +13,127 @@ if (pdfData) {
   alert("No PDF file found. Please upload a file and try again.");
 }
 
-window.openPDF = function () {
+// window.openPDF = function () {
+//   // Create a hidden file input element
+//   const fileInput = document.createElement("input");
+//   fileInput.type = "file";
+//   fileInput.accept = "application/pdf";
+//   fileInput.style.display = "none";
+
+//   // Listen for file selection
+//   fileInput.addEventListener("change", function (event) {
+//     const file = event.target.files[0];
+//     if (file) {
+//       console.log("Opening PDF file:", file);
+//       console.log("File name:", file.name);
+//       const fileURL = URL.createObjectURL(file);
+//       console.log("File URL:", fileURL);
+
+//       // Close the current PDF before opening a new one
+//       PDFViewerApplication.close().then(function () {
+//         PDFViewerApplication.open({
+//           url: fileURL,
+//           originalUrl: file.name,
+//         });
+//       });
+//     }
+//   });
+
+//   // Trigger the file dialog
+//   document.body.append(fileInput);
+//   fileInput.click();
+
+//   // Clean up the file input element
+//   fileInput.remove();
+
+//   const response = await fetch('http://127.0.0.1:8000/api/summerize', {
+//     method: 'POST',
+//     headers: {'Content-Type': 'application/json'},
+//     body: JSON.stringify(file)
+//   });
+// };
+
+window.openPDF = async function () {
   // Create a hidden file input element
   const fileInput = document.createElement("input");
   fileInput.type = "file";
   fileInput.accept = "application/pdf";
   fileInput.style.display = "none";
 
-  // Listen for file selection
-  fileInput.addEventListener("change", function (event) {
-    const file = event.target.files[0];
-    if (file) {
-      console.log("Opening PDF file:", file);
-      console.log("File name:", file.name);
-      const fileURL = URL.createObjectURL(file);
-      console.log("File URL:", fileURL);
+  // Add to the DOM so that .click() works properly
+  document.body.append(fileInput);
 
-      // Close the current PDF before opening a new one
-      PDFViewerApplication.close().then(function () {
-        PDFViewerApplication.open({
-          url: fileURL,
-          originalUrl: file.name,
-        });
-      });
-    }
+  // Create a Promise to wait for user selection
+  const fileSelected = new Promise(resolve => {
+    fileInput.addEventListener("change", () => resolve(fileInput.files[0]), {
+      once: true,
+    });
   });
 
   // Trigger the file dialog
-  document.body.append(fileInput);
   fileInput.click();
 
-  // Clean up the file input element
+  // Wait for file to be selected
+  const file = await fileSelected;
+
+  // Remove the file input element from the DOM
   fileInput.remove();
+
+  // If no file was selected, exit
+  if (!file) {
+    return;
+  }
+
+  console.log("Opening PDF file:", file);
+  console.log("File name:", file.name);
+
+  const fileURL = URL.createObjectURL(file);
+  console.log("File URL:", fileURL);
+
+  // Close the current PDF before opening a new one
+  await PDFViewerApplication.close();
+  PDFViewerApplication.open({
+    url: fileURL,
+    originalUrl: file.name,
+  });
+
+  // Read the file content as base64 if you need
+  // to send the contents to the server
+  const fileBase64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      // reader.result is an ArrayBuffer for binary files
+      // Convert to base64
+      const base64String = btoa(
+        new Uint8Array(reader.result).reduce(
+          (data, byte) => data + String.fromCharCode(byte),
+          ""
+        )
+      );
+      resolve(base64String);
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+
+  // Now send the base64 encoded PDF to the server
+  const response = await fetch("http://127.0.0.1:8000/api/summerize", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      pdf_data: "data:application/pdf;base64," + fileBase64,
+    }),
+  });
+
+  if (!response.ok) {
+    console.error(
+      "Error summmarizing PDF:",
+      response.status,
+      response.statusText
+    );
+  } else {
+    console.log("PDF summarized successfully");
+  }
 };
 
 window.highlightLease = function () {
